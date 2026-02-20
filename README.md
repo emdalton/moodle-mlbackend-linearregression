@@ -154,9 +154,9 @@ Consequently:
 
 ---
 
-## Installation Order
+## Installation
 
-Because `local_coursefinalgrade` declares `mlbackend_linearregression` as a dependency, Moodle's installer will enforce correct order. Manually:
+Because `local_coursefinalgrade` declares `mlbackend_linearregression` as a dependency, Moodle's installer will enforce correct order. Copy the plugins into your Moodle directory tree:
 
 ```bash
 # 1. Copy backend plugin
@@ -164,11 +164,21 @@ cp -r lib/mlbackend/linearregression /path/to/moodle/lib/mlbackend/
 
 # 2. Copy target plugin
 cp -r local/coursefinalgrade /path/to/moodle/local/
-
-# 3. Visit Site Administration to trigger installation
 ```
 
-After installation, go to **Site Administration → Analytics → Analytics settings** and set the ML backend to *Linear regression machine learning backend* before enabling the model.
+Then follow these steps in order:
+
+**Step 1: Trigger installation**
+Visit Site Administration in your browser. Moodle will detect the new plugins and prompt you to install them. `mlbackend_linearregression` will be installed first as it is a declared dependency of `local_coursefinalgrade`.
+
+**Step 2: Set the ML backend**
+Go to **Site Administration → Analytics → Analytics settings** and set the machine learning backend to *Linear regression machine learning backend*.
+
+**Step 3: Restore default models**
+Go to **Site Administration → Analytics → Analytics models** and click **Restore default models**. This is a required step — the "Course final grade prediction" model defined in `db/analytics.php` is not automatically visible after installation. It will appear in the list after restoring defaults.
+
+**Step 4: Review and enable the model**
+The model is installed in a disabled state (`'enabled' => false`) by design. Before enabling it, review the indicator set and evaluate the model against your site's data. The model can be enabled through the Analytics models interface once you are satisfied it is appropriate for your site.
 
 ---
 
