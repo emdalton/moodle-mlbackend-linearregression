@@ -477,10 +477,10 @@ class processor implements \core_analytics\regressor, \core_analytics\packable {
         $trainindices = array_slice($indices, 0, $ntrain);
         $testindices  = array_slice($indices, $ntrain);
 
-        $trainsamples = array_map(fn($i) => $samples[$i], $trainindices);
-        $traintargets = array_map(fn($i) => $targets[$i], $trainindices);
-        $testsamples  = array_map(fn($i) => $samples[$i], $testindices);
-        $testtargets  = array_map(fn($i) => $targets[$i], $testindices);
+        $trainsamples = array_map(function($i) use ($samples) { return $samples[$i]; }, $trainindices);
+        $traintargets = array_map(function($i) use ($targets) { return $targets[$i]; }, $trainindices);
+        $testsamples  = array_map(function($i) use ($samples) { return $samples[$i]; }, $testindices);
+        $testtargets  = array_map(function($i) use ($targets) { return $targets[$i]; }, $testindices);
 
         return [$trainsamples, $traintargets, $testsamples, $testtargets];
     }
@@ -533,7 +533,7 @@ class processor implements \core_analytics\regressor, \core_analytics\packable {
      */
     protected function population_stddev(array $values): float {
         $mean = array_sum($values) / count($values);
-        $variance = array_sum(array_map(fn($v) => ($v - $mean) ** 2, $values)) / count($values);
+        $variance = array_sum(array_map(function($v) use ($mean) { return ($v - $mean) ** 2; }, $values)) / count($values);
         return sqrt($variance);
     }
 }
