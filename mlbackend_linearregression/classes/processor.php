@@ -195,6 +195,9 @@ class processor implements \core_analytics\regressor, \core_analytics\packable {
 
         return $resultobj;
     }
+
+    /**
+     * Estimates linear values for the provided dataset samples.
      *
      * Loads the serialised model and generates a continuous predicted value
      * (e.g. a grade between 0 and 100) for each sample in the dataset.
