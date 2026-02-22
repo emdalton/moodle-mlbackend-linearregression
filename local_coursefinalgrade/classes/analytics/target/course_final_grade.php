@@ -142,8 +142,16 @@ class course_final_grade extends \core_course\analytics\target\course_enrolments
                     $grademax = floatval($gradeitem->grademax);
                     $grademin = floatval($gradeitem->grademin);
                     if ($grademax > $grademin) {
-                        // Normalise gradepass to percentage, consistent with calculate_sample().
-                        $boundary = ((floatval($gradeitem->gradepass) - $grademin) / ($grademax - $grademin)) * 100.0;
+                        // Normalise gradepass to percentage using Moodle's standardise_score(),
+                        // consistent with calculate_sample(). The $grademax > $grademin guard
+                        // ensures we don't hit standardise_score()'s degenerate-range fallback.
+                        $boundary = \grade_grade::standardise_score(
+                            floatval($gradeitem->gradepass),
+                            $grademin,
+                            $grademax,
+                            self::MIN_GRADE,
+                            self::MAX_GRADE
+                        );
                         return max(self::MIN_GRADE, min(self::MAX_GRADE, $boundary));
                     }
                 }
@@ -220,13 +228,14 @@ class course_final_grade extends \core_course\analytics\target\course_enrolments
                 throw new \coding_exception('No available log stores');
             }
 
+            global $DB;
             $params = [
                 'courseid'  => $course->get_id(),
                 'anonymous' => 0,
                 'start'     => $course->get_start(),
                 'end'       => $course->get_end(),
             ];
-            [$studentssql, $studentparams] = $this->get_students_sql();
+            [$studentssql, $studentparams] = $DB->get_in_or_equal($this->students, SQL_PARAMS_NAMED, 'student');
             $select = 'courseid = :courseid AND anonymous = :anonymous AND timecreated > :start ' .
                       'AND timecreated < :end AND userid ' . $studentssql;
 
@@ -296,7 +305,17 @@ class course_final_grade extends \core_course\analytics\target\course_enrolments
             return null;
         }
 
-        $percentage = ((floatval($gradegrade->finalgrade) - $grademin) / ($grademax - $grademin)) * 100.0;
+        // Normalise using Moodle's grade_grade::standardise_score() which handles
+        // division by zero and null input. We pass target_min=0, target_max=100
+        // to get a direct percentage. The $grademax > $grademin guard above means
+        // we will not hit standardise_score()'s degenerate-range fallback.
+        $percentage = \grade_grade::standardise_score(
+            floatval($gradegrade->finalgrade),
+            $grademin,
+            $grademax,
+            self::MIN_GRADE,
+            self::MAX_GRADE
+        );
 
         // Clamp to [0, 100] to guard against any out-of-range grade values.
         return max(self::MIN_GRADE, min(self::MAX_GRADE, $percentage));
@@ -315,15 +334,10 @@ class course_final_grade extends \core_course\analytics\target\course_enrolments
      * @return int|null
      */
     private function get_course_id_from_context(): ?int {
-        // The analyser populates $this->students before calling calculate_sample().
-        // We can use any student's enrolment to find the course, but this is fragile
-        // if called outside a prediction run. Return null defensively if unavailable.
         if (empty($this->students)) {
             return null;
         }
         global $DB;
-        // $this->students is an array of user ids. Use the first one to find an
-        // enrolment and from there the course. This is lightweight — one DB lookup.
         $userid = reset($this->students);
         $enrol = $DB->get_record_sql(
             'SELECT e.courseid FROM {user_enrolments} ue
@@ -334,15 +348,5 @@ class course_final_grade extends \core_course\analytics\target\course_enrolments
             IGNORE_MULTIPLE
         );
         return $enrol ? (int) $enrol->courseid : null;
-    }
-
-    /**
-     * Returns an SQL fragment and params for filtering log events to enrolled students.
-     *
-     * @return array [$sql, $params]
-     */
-    private function get_students_sql(): array {
-        global $DB;
-        return $DB->get_in_or_equal($this->students, SQL_PARAMS_NAMED, 'student');
     }
 }

@@ -33,9 +33,10 @@ require_once($CFG->dirroot . '/lib/mlbackend/php/phpml/src/Phpml/Regression/Regr
 require_once($CFG->dirroot . '/lib/mlbackend/php/phpml/src/Phpml/Math/Matrix.php');
 require_once($CFG->dirroot . '/lib/mlbackend/php/phpml/src/Phpml/Math/LinearAlgebra/LUDecomposition.php');
 require_once($CFG->dirroot . '/lib/mlbackend/php/phpml/src/Phpml/Helper/Predictable.php');
+require_once($CFG->dirroot . '/lib/mlbackend/php/phpml/src/Phpml/Math/Statistic/StandardDeviation.php');
+require_once($CFG->dirroot . '/lib/mlbackend/php/phpml/src/Phpml/Math/Statistic/Mean.php');
 
 use Phpml\Regression\LeastSquares;
-use Phpml\Math\Statistic\Mean;
 use Phpml\Math\Statistic\StandardDeviation;
 
 /**
@@ -466,6 +467,12 @@ class processor implements \core_analytics\regressor, \core_analytics\packable {
     /**
      * Splits samples and targets into random train/test subsets.
      *
+     * We implement this ourselves rather than using Phpml\CrossValidation\RandomSplit
+     * because PHP-ML's implementation samples with replacement using mt_rand() against
+     * a fixed array index, meaning the same sample can appear in both train and test
+     * sets. Our implementation shuffles indices without replacement, which is
+     * statistically correct for model evaluation.
+     *
      * @param array $samples
      * @param array $targets
      * @param float $testsize Proportion to use for testing (e.g. 0.2 for 80/20 split)
@@ -531,12 +538,22 @@ class processor implements \core_analytics\regressor, \core_analytics\packable {
     /**
      * Calculates population standard deviation.
      *
+     * Delegates to Phpml\Math\Statistic\StandardDeviation::population() with
+     * $sample = false to calculate population (not sample) standard deviation,
+     * i.e. dividing by n rather than n-1. Population stddev is appropriate here
+     * because we are measuring deviation across the full set of evaluation
+     * iterations, not estimating from a sample.
+     *
+     * Note: PHP-ML's StandardDeviation::population() defaults to sample stddev
+     * ($sample = true). The false argument is required and intentional.
+     *
      * @param float[] $values
      * @return float
      */
     protected function population_stddev(array $values): float {
-        $mean = array_sum($values) / count($values);
-        $variance = array_sum(array_map(function($v) use ($mean) { return ($v - $mean) ** 2; }, $values)) / count($values);
-        return sqrt($variance);
+        if (count($values) === 1) {
+            return 0.0;
+        }
+        return StandardDeviation::population($values, false);
     }
 }
