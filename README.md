@@ -1,6 +1,8 @@
 # Course Final Grade Prediction — Moodle Analytics Plugins
 
-This document describes the design decisions made during the development of two companion Moodle plugins that together add linear regression-based course final grade prediction to Moodle's Analytics subsystem.
+This repository contains two companion Moodle plugins that together add linear regression-based course final grade prediction to Moodle's Analytics subsystem. The intent of this plugin set is to allow Moodle users to create Moodle Analytics models that will make predictions about the learner's final grade in a course, based on the histories of other learners in previous Moodle courses. A linear regression method is also made available for other numerical predictions, e.g. the expected number of days for a learner to complete an open-ended course.
+
+This document also describes the design decisions made during the development of the plugins.
 
 ---
 
